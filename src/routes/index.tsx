@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { COMMANDS, CATEGORIES, OS_TAGS, TAG_LIST, PARAM_KEYS, type Command } from "@/lib/commands";
-import { Check, ChevronDown, Copy, Search, Terminal } from "lucide-react";
+import { COMMANDS, CATEGORIES, OS_TAGS, PARAM_KEYS, type Command } from "@/lib/commands";
+import { Check, ChevronDown, Copy, Download, Search, Terminal } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "BlueMatrix — Command Library" },
+      { title: "Command Autofill Catalog" },
       { name: "description", content: "Autofill command library and template arsenal for offensive security operators." },
-      { property: "og:title", content: "BlueMatrix — Command Library" },
+      { property: "og:title", content: "Command Autofill Catalog" },
       { property: "og:description", content: "Autofill command library and template arsenal for offensive security operators." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -42,10 +42,10 @@ function CommandCard({ cmd, params }: { cmd: Command; params: Record<string, str
     <div className="panel rounded-lg p-4 transition-all hover:border-primary/60 hover:shadow-[0_0_30px_-12px_oklch(0.65_0.22_255/0.6)]">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Terminal className="h-4 w-4 text-primary" />
-        <h3 className="font-matrix text-base font-semibold text-foreground glow-text">{cmd.title}</h3>
+        <h3 className="font-matrix text-lg font-semibold text-foreground glow-text">{cmd.title}</h3>
         <div className="ml-auto flex flex-wrap gap-1">
           {cmd.categories.map((c) => (
-            <span key={c} className="font-matrix rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[11px] uppercase tracking-wider text-primary">
+            <span key={c} className="font-matrix rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[12px] uppercase tracking-wider text-primary">
               {c}
             </span>
           ))}
@@ -74,7 +74,7 @@ function CommandCard({ cmd, params }: { cmd: Command; params: Record<string, str
         </span>
       </button>
 
-      <p className="font-matrix mt-2 text-sm leading-relaxed text-muted-foreground">{cmd.description}</p>
+      <p className="font-matrix mt-2 text-base leading-relaxed text-muted-foreground">{cmd.description}</p>
     </div>
   );
 }
@@ -98,7 +98,7 @@ function FilterChip({ label, active, onClick }: { label: string; active: boolean
 function ParamInput({ k, value, onChange }: { k: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="group flex flex-col gap-1">
-      <span className="font-matrix text-[11px] font-semibold uppercase tracking-widest text-muted-foreground group-focus-within:text-primary">
+      <span className="font-matrix text-xs font-semibold uppercase tracking-widest text-muted-foreground group-focus-within:text-primary">
         {k}
       </span>
       <input
@@ -116,7 +116,6 @@ function Index() {
   const [search, setSearch] = useState("");
   const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
   const [activeOs, setActiveOs] = useState<Set<string>>(new Set());
-  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [paramsExpanded, setParamsExpanded] = useState(false);
 
   const toggle = (set: Set<string>, updater: (s: Set<string>) => void, v: string) => {
@@ -132,7 +131,6 @@ function Index() {
     return COMMANDS.filter((c) => {
       if (activeCats.size && !c.categories.some((x) => activeCats.has(x))) return false;
       if (activeOs.size && !c.os.some((x) => activeOs.has(x))) return false;
-      if (activeTags.size && !c.tags.some((x) => activeTags.has(x))) return false;
       if (search) {
         const q = search.toLowerCase();
         const hay = (c.title + " " + c.template + " " + c.description).toLowerCase();
@@ -140,26 +138,36 @@ function Index() {
       }
       return true;
     });
-  }, [params, search, activeCats, activeOs, activeTags]);
+  }, [params, search, activeCats, activeOs]);
+
+  const exportTxt = () => {
+    const now = new Date();
+    const stamp = now.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+    const paramLine = PARAM_KEYS.map((k) => `${k}=${params[k] ?? ""}`).join(" ");
+    const lines = [stamp, paramLine, ...filtered.map((c) => fillTemplate(c.template, params))];
+    const blob = new Blob([lines.join("\n") + "\n"], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `commands_${now.toISOString().slice(0, 19).replace(/[:T]/g, "-")}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen">
       {/* Header */}
       <header className="border-b border-border/60 bg-black/40 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-[1600px] flex-col items-center justify-center gap-1 px-6 py-5 text-center">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-md border border-primary/50 bg-primary/10 text-primary shadow-[0_0_20px_-4px_oklch(0.65_0.22_255/0.8)]">
-              <Terminal className="h-5 w-5" />
+            <div className="grid h-11 w-11 place-items-center rounded-md border border-primary/50 bg-primary/10 text-primary shadow-[0_0_20px_-4px_oklch(0.65_0.22_255/0.8)]">
+              <Terminal className="h-6 w-6" />
             </div>
-            <div>
-              <h1 className="font-matrix text-2xl font-bold tracking-wider text-foreground glow-text">BLUE//MATRIX</h1>
-              <p className="font-matrix text-xs uppercase tracking-[0.3em] text-muted-foreground">Command Arsenal</p>
-            </div>
-          </div>
-          <div className="font-matrix hidden items-center gap-4 text-sm uppercase tracking-widest text-muted-foreground md:flex">
-            <span>{COMMANDS.length} templates loaded</span>
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary shadow-[0_0_8px_oklch(0.65_0.22_255)]" />
-            <span className="text-primary">online</span>
+            <h1 className="font-matrix text-4xl font-bold tracking-wider text-foreground glow-text">
+              COMMAND AUTOFILL CATALOG
+            </h1>
           </div>
         </div>
       </header>
@@ -167,7 +175,7 @@ function Index() {
       <main className="mx-auto max-w-[1600px] space-y-5 px-6 py-6">
         {/* Params panel */}
         <section className="panel rounded-lg p-4">
-          <div className="font-matrix mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-primary/80">
+          <div className="font-matrix mb-3 flex items-center gap-2 text-base uppercase tracking-[0.2em] text-primary/90">
             <span>&gt;</span>
             <span>Parameters — autofill across all commands</span>
           </div>
@@ -190,20 +198,18 @@ function Index() {
             <button
               onClick={() => setParamsExpanded((v) => !v)}
               aria-expanded={paramsExpanded}
-              className="font-matrix group flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-1 text-xs uppercase tracking-widest text-primary hover:bg-primary/20"
+              className="font-matrix group flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-1 text-sm uppercase tracking-widest text-primary hover:bg-primary/20"
             >
               <span>{paramsExpanded ? "Collapse" : "More parameters"}</span>
-              <ChevronDown
-                className={"h-4 w-4 transition-transform " + (paramsExpanded ? "rotate-180" : "")}
-              />
+              <ChevronDown className={"h-4 w-4 transition-transform " + (paramsExpanded ? "rotate-180" : "")} />
             </button>
           </div>
         </section>
 
         {/* Search box */}
         <section className="panel rounded-lg p-4">
-          <div className="font-matrix mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-primary/80">
-            <Search className="h-3.5 w-3.5" />
+          <div className="font-matrix mb-2 flex items-center gap-2 text-base uppercase tracking-[0.2em] text-primary/90">
+            <Search className="h-4 w-4" />
             <span>Search</span>
           </div>
           <input
@@ -216,45 +222,48 @@ function Index() {
 
         {/* Filters + Results */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          {/* Filters */}
-          <aside className="panel h-fit rounded-lg p-4 lg:sticky lg:top-6">
-            <div className="font-matrix mb-3 text-xs uppercase tracking-[0.25em] text-primary/80">Filters</div>
+          {/* Left column: filters + export */}
+          <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
+            <aside className="panel rounded-lg p-4">
+              <div className="font-matrix mb-3 text-base uppercase tracking-[0.2em] text-primary/90">Filters</div>
 
-            <FilterGroup title="Category">
-              {CATEGORIES.map((c) => (
-                <FilterChip key={c} label={c} active={activeCats.has(c)} onClick={() => toggle(activeCats, setActiveCats, c)} />
-              ))}
-            </FilterGroup>
+              <FilterGroup title="Category">
+                {CATEGORIES.map((c) => (
+                  <FilterChip key={c} label={c} active={activeCats.has(c)} onClick={() => toggle(activeCats, setActiveCats, c)} />
+                ))}
+              </FilterGroup>
 
-            <FilterGroup title="Platform">
-              {OS_TAGS.map((o) => (
-                <FilterChip key={o} label={o} active={activeOs.has(o)} onClick={() => toggle(activeOs, setActiveOs, o)} />
-              ))}
-            </FilterGroup>
+              <FilterGroup title="Platform">
+                {OS_TAGS.map((o) => (
+                  <FilterChip key={o} label={o} active={activeOs.has(o)} onClick={() => toggle(activeOs, setActiveOs, o)} />
+                ))}
+              </FilterGroup>
 
-            <FilterGroup title="Tag">
-              {TAG_LIST.map((t) => (
-                <FilterChip key={t} label={t} active={activeTags.has(t)} onClick={() => toggle(activeTags, setActiveTags, t)} />
-              ))}
-            </FilterGroup>
+              {(activeCats.size || activeOs.size) > 0 && (
+                <button
+                  onClick={() => {
+                    setActiveCats(new Set());
+                    setActiveOs(new Set());
+                  }}
+                  className="font-matrix mt-4 w-full rounded border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-sm uppercase tracking-widest text-destructive-foreground/90 hover:bg-destructive/20"
+                >
+                  Clear filters
+                </button>
+              )}
+            </aside>
 
-            {(activeCats.size || activeOs.size || activeTags.size) > 0 && (
-              <button
-                onClick={() => {
-                  setActiveCats(new Set());
-                  setActiveOs(new Set());
-                  setActiveTags(new Set());
-                }}
-                className="font-matrix mt-4 w-full rounded border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-sm uppercase tracking-widest text-destructive-foreground/90 hover:bg-destructive/20"
-              >
-                Clear filters
-              </button>
-            )}
-          </aside>
+            <button
+              onClick={exportTxt}
+              className="panel font-matrix flex w-full items-center justify-center gap-2 rounded-lg p-3 text-sm uppercase tracking-[0.2em] text-primary transition-colors hover:border-primary/70 hover:bg-primary/10"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export results to .txt file</span>
+            </button>
+          </div>
 
           {/* Results */}
           <section className="panel rounded-lg p-4 lg:col-span-2">
-            <div className="font-matrix mb-3 flex items-baseline justify-between px-1 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+            <div className="font-matrix mb-3 flex items-baseline justify-between px-1 text-base uppercase tracking-[0.2em] text-muted-foreground">
               <span>Results</span>
               <span className="text-primary">{filtered.length} / {COMMANDS.length}</span>
             </div>
@@ -277,7 +286,7 @@ function Index() {
 function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-4">
-      <div className="font-matrix mb-2 text-xs uppercase tracking-[0.25em] text-primary/80">{title}</div>
+      <div className="font-matrix mb-2 text-sm uppercase tracking-[0.2em] text-primary/80">{title}</div>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
